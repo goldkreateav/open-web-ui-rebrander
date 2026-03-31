@@ -1,0 +1,61 @@
+{
+  "appName": "Sollers AI",
+  "suffixStrategy": "none",
+  "companyName": "Sollers",
+  "copyrightOwner": "Sollers",
+  "cssVars": {
+    "root": {
+      "--color-gray-950": "#0a0909"
+    },
+    "dark": {
+      "--color-gray-950": "#0a0909"
+    },
+    "oled-dark": {
+      "--color-gray-950": "#000000"
+    },
+    "her": {
+      "--color-gray-950": "#3d1f0c"
+    }
+  },
+  "colors": {
+    "primaryColor": "#292523",
+    "lightThemeColor": "#ffffff",
+    "oledThemeColor": "#000000",
+    "herThemeColor": "#F47C30"
+  },
+  "favicon": {
+    "png": "../assets/favicon.png",
+    "darkPng": "../assets/favicon-dark.png",
+    "svg": "../assets/favicon.svg",
+    "ico": "../assets/favicon.ico",
+    "png96": "../assets/favicon-96x96.png",
+    "appleTouch": "../assets/apple-touch-icon.png"
+  },
+  "splash": {
+    "light": "../assets/splash.png",
+    "dark": "../assets/splash-dark.png"
+  },
+  "logo": {
+    "png": "../assets/logo.png"
+  },
+  "pwa": {
+    "webAppManifest192": "../assets/web-app-manifest-192x192.png",
+    "webAppManifest512": "../assets/web-app-manifest-512x512.png"
+  },
+  "links": {
+    "website": "https://example.com",
+    "license": "https://example.com/license",
+    "discord": "https://discord.gg/example",
+    "twitterUrl": "https://twitter.com/example",
+    "twitterHandle": "example",
+    "githubUrl": "https://github.com/example/example",
+    "githubStarsBadgeLabel": "example"
+  },
+  "attribution": {
+    "keepCommunityLinks": true,
+    "keepLicenseBlock": true
+  },
+  "webuiFaviconUrl": "https://example.com/favicon.png",
+  "openwebuiTeamName": "MyProduct"
+}
+

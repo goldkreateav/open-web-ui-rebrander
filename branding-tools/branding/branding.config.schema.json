@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Open WebUI Rebranding Config Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["appName"],
+  "properties": {
+    "appName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Brand name shown in the UI (replaces 'Open WebUI')."
+    },
+    "suffixStrategy": {
+      "type": "string",
+      "enum": ["none", "keep_openwebui_suffix"],
+      "default": "keep_openwebui_suffix",
+      "description": "Controls env.py logic about appending ' (Open WebUI)' to WEBUI_NAME when overridden."
+    },
+    "companyName": {
+      "type": "string",
+      "description": "Company display name (used in attribution blocks when enabled)."
+    },
+    "copyrightOwner": {
+      "type": "string",
+      "description": "Copyright owner string (used in About/attribution when enabled)."
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primaryColor": { "type": "string", "description": "Dark theme meta theme-color." },
+        "lightThemeColor": { "type": "string", "description": "Light theme meta theme-color." },
+        "oledThemeColor": { "type": "string", "description": "OLED theme meta theme-color." },
+        "herThemeColor": { "type": "string", "description": "Her theme meta theme-color." }
+      },
+      "description": "Hex colors used for theme meta tags."
+    },
+    "favicon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "png": { "type": "string", "description": "Source path to favicon.png" },
+        "darkPng": { "type": "string", "description": "Source path to favicon-dark.png" },
+        "svg": { "type": "string", "description": "Source path to favicon.svg" },
+        "ico": { "type": "string", "description": "Source path to favicon.ico" },
+        "png96": { "type": "string", "description": "Source path to favicon-96x96.png" },
+        "appleTouch": { "type": "string", "description": "Source path to apple-touch-icon.png" }
+      }
+    },
+    "splash": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": { "type": "string", "description": "Source path to splash.png" },
+        "dark": { "type": "string", "description": "Source path to splash-dark.png" }
+      }
+    },
+    "logo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "png": { "type": "string", "description": "Source path to logo.png used in PWA manifest" }
+      }
+    },
+    "pwa": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "webAppManifest192": { "type": "string", "description": "Source path to web-app-manifest-192x192.png" },
+        "webAppManifest512": { "type": "string", "description": "Source path to web-app-manifest-512x512.png" }
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "website": { "type": "string", "description": "Brand website URL (About attribution links when enabled)" },
+        "license": { "type": "string", "description": "Optional license URL for About attribution when enabled" },
+        "discord": { "type": "string", "description": "Optional Discord invite (only used if keepCommunityLinks=false)" },
+        "twitterUrl": { "type": "string", "description": "Optional Twitter/X profile URL (only used if keepCommunityLinks=false)" },
+        "twitterHandle": { "type": "string", "description": "Optional Twitter/X handle without '@' (only used if keepCommunityLinks=false)" },
+        "githubUrl": { "type": "string", "description": "Optional GitHub repo URL (only used if keepCommunityLinks=false)" },
+        "githubStarsBadgeLabel": { "type": "string", "description": "Optional label for stars badge query (only used if keepCommunityLinks=false)" }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "keepCommunityLinks": { "type": "boolean", "default": true },
+        "keepLicenseBlock": { "type": "boolean", "default": true }
+      }
+    },
+    "webuiFaviconUrl": {
+      "type": "string",
+      "description": "Optional WEBUI_FAVICON_URL override in backend env.py"
+    },
+    "openwebuiTeamName": {
+      "type": "string",
+      "description": "Optional replacement for 'Open WebUI team' phrase (defaults to appName)."
+    }
+  },
+  "description": "Configuration used by branding-applier to apply deterministic UI rebranding."
+}
+
