@@ -4,18 +4,6 @@
   "companyName": "Sollers",
   "copyrightOwner": "Sollers",
   "cssVars": {
-    "root": {
-      "--color-gray-950": "#0a0909"
-    },
-    "dark": {
-      "--color-gray-950": "#0a0909"
-    },
-    "oled-dark": {
-      "--color-gray-950": "#000000"
-    },
-    "her": {
-      "--color-gray-950": "#3d1f0c"
-    }
   },
   "colors": {
     "primaryColor": "#292523",
