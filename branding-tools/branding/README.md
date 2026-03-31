@@ -7,6 +7,7 @@
 - обновляет `theme-color` и PWA-темы,
 - копирует ассеты (favicon/splash/logo/manifest icons) в backend статические файлы,
 - обновляет тексты бренда в UI и `src/lib/i18n/locales/**/translation.json`,
+- применяет небольшой compat-патч для исправления поиска промптов по тегам на кириллице в SQLite,
 - делает backup изменённых файлов и пишет `open-webui/branding-report.md`.
 
 ## Запуск

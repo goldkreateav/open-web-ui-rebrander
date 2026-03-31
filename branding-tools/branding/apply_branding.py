@@ -231,6 +231,88 @@ def patch_text_by_regex(
 		ops.append({"type": "regexPatch", "file": str(file_path)})
 
 
+def patch_prompt_tag_search_sqlite_json_each(
+	target_dir: Path,
+	ops: List[dict],
+	dry_run: bool,
+	strict: bool,
+	workspace_root: Path,
+	backup_root: Path,
+) -> None:
+	"""
+	Fix prompt tag filtering for non-ASCII (e.g. Cyrillic) tags in SQLite.
+
+	Why this patch exists:
+	- `prompt.tags` is a JSON column and in SQLite it is commonly stored as a JSON-serialized TEXT.
+	- Non-ASCII characters may be stored as \\uXXXX escape sequences in the serialized JSON text.
+	- Searching the serialized text via LIKE/LOWER can return 0 results for Cyrillic tags.
+	- SQLite's JSON1 extension exposes `json_each()`, which compares decoded values reliably.
+	"""
+	prompts_py = target_dir / "backend" / "open_webui" / "models" / "prompts.py"
+	if not prompts_py.exists():
+		# Some forks may not have this file; treat as best-effort.
+		ops.append({"type": "compatSkip", "patch": "promptTagSearchJsonEach", "reason": "missing", "file": str(prompts_py)})
+		return
+
+	original = _read_text(prompts_py)
+	if "json_each(prompt.tags)" in original:
+		# Already patched (or upstream already fixed it).
+		ops.append({"type": "compatSkip", "patch": "promptTagSearchJsonEach", "reason": "alreadyApplied", "file": str(prompts_py)})
+		return
+
+	# 1) Ensure `text` is imported from sqlalchemy (needed for raw EXISTS clause).
+	# We patch the common import line; keep it narrow to avoid changing unrelated imports.
+	patch_text_by_regex(
+		file_path=prompts_py,
+		pattern=r"^from sqlalchemy import ([^\n]*\bcast\b[^\n]*)$",
+		repl=r"from sqlalchemy import \1, text",
+		ops=ops,
+		dry_run=dry_run,
+		strict=False,
+		workspace_root=workspace_root,
+		backup_root=backup_root,
+		flags=re.MULTILINE,
+	)
+
+	# 2) Replace the old LIKE-based tag filter block with JSON1 `json_each()` filter.
+	# This targets the legacy implementation:
+	#   like_pattern = f'%\"{tag.lower()}\"%'
+	#   tags_text = func.lower(cast(Prompt.tags, String))
+	#   query = query.filter(tags_text.like(like_pattern))
+	#
+	# We replace the whole "if tag:" block body (indent-sensitive) with a robust EXISTS filter.
+	patch_text_by_regex(
+		file_path=prompts_py,
+		pattern=r"""
+(^\s*tag\s*=\s*filter\.get\('tag'\)\s*\n
+^\s*if\s+tag\s*:\s*\n)
+(?:^[ \t]+.*\n)+?
+(?=^\s*order_by\s*=\s*filter\.get\('order_by'\))
+""",
+		repl=(
+			r"\1"
+			r"                    # Search for tag in JSON array field.\n"
+			r"                    #\n"
+			r"                    # SQLite note: don't use LOWER()/NOCASE for Cyrillic (ASCII-only), and don't\n"
+			r"                    # use LIKE on serialized JSON because non-ASCII may be stored as \\uXXXX.\n"
+			r"                    # Use JSON1 json_each() to compare decoded values.\n"
+			r"                    query = query.filter(\n"
+			r"                        text(\n"
+			r"                            'EXISTS (SELECT 1 FROM json_each(prompt.tags) WHERE json_each.value = :tag)'\n"
+			r"                        ).bindparams(tag=tag)\n"
+			r"                    )\n"
+		),
+		ops=ops,
+		dry_run=dry_run,
+		strict=strict,
+		workspace_root=workspace_root,
+		backup_root=backup_root,
+		flags=re.VERBOSE | re.MULTILINE,
+	)
+
+	ops.append({"type": "compatPatch", "patch": "promptTagSearchJsonEach", "file": str(prompts_py)})
+
+
 def replace_json_branding(
 	json_path: Path,
 	app_name: str,
@@ -807,6 +889,17 @@ def main(argv: Optional[List[str]] = None) -> int:
 		workspace_root=workspace_root,
 		backup_root=backup_root,
 		only_exts=[".svelte", ".ts", ".js"],
+	)
+
+	# 6b) Compatibility fixes (best-effort, deterministic).
+	# Fix prompt tag search in SQLite for non-ASCII tags (e.g. Cyrillic).
+	patch_prompt_tag_search_sqlite_json_each(
+		target_dir=target_dir,
+		ops=ops,
+		dry_run=args.dry_run,
+		strict=False,  # keep branding resilient across upstream changes
+		workspace_root=workspace_root,
+		backup_root=backup_root,
 	)
 
 	# Dynamic PWA manifest endpoint (/manifest.json) uses hard-coded background_color.

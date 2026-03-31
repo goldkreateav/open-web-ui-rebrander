@@ -80,6 +80,32 @@ def git_fast_forward_pull(open_webui_dir: Path, remote: str, branch: str) -> Non
     run(["git", "pull", "--ff-only", remote, branch], cwd=open_webui_dir)
 
 
+def git_clone(open_webui_dir: Path, repo_url: str, branch: str) -> None:
+    """
+    Clone Open WebUI into open_webui_dir.
+
+    We clone a single branch to keep it fast and deterministic.
+    """
+    parent = open_webui_dir.parent
+    if not parent.exists():
+        parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"Cloning open-webui into {open_webui_dir} (branch: {branch})")
+    run(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--branch",
+            branch,
+            repo_url,
+            str(open_webui_dir),
+        ],
+        cwd=parent,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Update open-webui from git (if behind), apply branding, then build Docker image."
@@ -95,6 +121,11 @@ def main() -> int:
         help="Path to branding.config.json (default: ./branding-tools/branding/branding.config.json)",
     )
     parser.add_argument("--image-tag", default="open-webui:branded", help="Docker image tag (default: open-webui:branded)")
+    parser.add_argument(
+        "--repo",
+        default="https://github.com/open-webui/open-webui.git",
+        help="Git repo URL to clone when open-webui-dir is missing (default: upstream Open WebUI)",
+    )
     parser.add_argument("--remote", default="origin", help="Git remote (default: origin)")
     parser.add_argument("--branch", default="main", help="Git branch (default: main)")
     parser.add_argument("--no-cache", action="store_true", help="Build Docker image without cache (docker build --no-cache)")
@@ -112,10 +143,11 @@ def main() -> int:
     which_or_fail("docker")
     # Use current interpreter for branding execution.
 
-    if not open_webui_dir.exists():
-        raise RuntimeError(f"OpenWebUI directory not found: {open_webui_dir}")
     if not config_path.exists():
         raise RuntimeError(f"Branding config not found: {config_path}")
+
+    if not open_webui_dir.exists():
+        git_clone(open_webui_dir, repo_url=args.repo, branch=args.branch)
 
     if not args.no_pull:
         if not git_is_repo(open_webui_dir):
