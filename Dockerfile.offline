@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1.7
+#
+# Offline build Dockerfile for Open WebUI.
+# Expects `open-webui/` (cloned upstream + branding applied) AND `vendor/` present in build context:
+# - vendor/npm-cache/          (npm cache with package tarballs)
+# - vendor/pip-wheels/         (python wheels for backend deps, including uv + torch wheels)
+# - vendor/apt-debs/           (all required .deb files for apt dependencies)
+#
+# This file is intentionally separate from upstream `open-webui/Dockerfile` to keep upstream diff minimal.
+
+ARG BUILD_HASH=offline-build
+
+######## WebUI frontend ########
+FROM node:22-alpine3.20 AS build
+ARG BUILD_HASH
+
+WORKDIR /app
+
+COPY open-webui/package.json open-webui/package-lock.json ./
+COPY vendor/npm-cache /vendor/npm-cache
+
+ENV npm_config_cache=/vendor/npm-cache
+RUN npm ci --offline --force
+
+COPY open-webui/ ./
+ENV APP_BUILD_HASH=${BUILD_HASH}
+RUN npm run build
+
+######## WebUI backend ########
+FROM python:3.11.14-slim-bookworm AS base
+
+ARG UID=0
+ARG GID=0
+ARG BUILD_HASH
+
+ENV PYTHONUNBUFFERED=1
+ENV ENV=prod \
+    PORT=8080 \
+    HOME=/root \
+    DOCKER=true \
+    WEBUI_BUILD_VERSION=${BUILD_HASH}
+
+WORKDIR /app/backend
+
+# Create user and group if not root
+RUN if [ $UID -ne 0 ]; then \
+    if [ $GID -ne 0 ]; then addgroup --gid $GID app; fi; \
+    adduser --uid $UID --gid $GID --home $HOME --disabled-password --no-create-home app; \
+    fi
+
+RUN mkdir -p $HOME/.cache/chroma && echo -n 00000000-0000-0000-0000-000000000000 > $HOME/.cache/chroma/telemetry_user_id
+RUN chown -R $UID:$GID /app $HOME
+
+# ---- Offline system deps (pre-downloaded .deb) ----
+COPY vendor/apt-debs /tmp/apt-debs
+RUN set -eux; \
+    dpkg -i /tmp/apt-debs/*.deb || true; \
+    apt-get update; \
+    apt-get -f install -y --no-install-recommends; \
+    rm -rf /var/lib/apt/lists/* /tmp/apt-debs
+
+# ---- Offline python deps (pre-downloaded wheels) ----
+COPY open-webui/backend/requirements.txt ./requirements.txt
+COPY vendor/pip-wheels /vendor/pip-wheels
+
+RUN python -m pip install --no-index --find-links=/vendor/pip-wheels uv
+RUN uv pip install --system -r requirements.txt --no-index --find-links=/vendor/pip-wheels
+
+# copy built frontend files
+COPY --chown=$UID:$GID --from=build /app/build /app/build
+COPY --chown=$UID:$GID --from=build /app/CHANGELOG.md /app/CHANGELOG.md
+COPY --chown=$UID:$GID --from=build /app/package.json /app/package.json
+
+# copy backend files
+COPY --chown=$UID:$GID open-webui/backend/ .
+
+EXPOSE 8080
+HEALTHCHECK CMD curl --silent --fail http://localhost:${PORT:-8080}/health | jq -ne 'input.status == true' || exit 1
+
+USER $UID:$GID
+
+CMD [ "bash", "start.sh" ]
+
